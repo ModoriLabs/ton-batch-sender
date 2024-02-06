@@ -1,4 +1,4 @@
-# Oneclicksender
+# BatchSender
 
 ## Project structure
 

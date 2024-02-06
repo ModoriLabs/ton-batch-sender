@@ -1,5 +1,5 @@
 {
-    "name": "oneclicksender",
+    "name": "batch-sender",
     "version": "0.0.1",
     "scripts": {
         "start": "blueprint run",
