@@ -1,0 +1,24 @@
+const WORKCHAIN = 0;
+
+{-
+https://docs.ton.org/ko/develop/howto/blockchain-configs#param-20-and-21
+These parameters define the cost of computations in the TON network. The complexity of any computation is estimated in gas units.
+
+* flat_gas_limit and flat_gas_price: A certain starting amount of gas is provided at a price of flat_gas_price (to offset the costs of launching the TON Virtual Machine).
+* gas_price: This parameter reflects the price of gas in the network, in nanotons per 65536 gas units.
+* gas_limit: This parameter represents the maximum amount of gas that can be consumed per transaction.
+* special_gas_limit: This parameter represents the limit on the amount of gas that can be consumed per transaction of a special (system) contract.
+* gas_credit: This parameter represents a credit in gas units that is provided to transactions for the purpose of checking an external message.
+* block_gas_limit: This parameter represents the maximum amount of gas that can be consumed within a single block.
+* freeze_due_limit and delete_due_limit: Limits of accumulated storage fees (in nanoTON) at which a contract is frozen and deleted, respectively.
+-}
+int get_gas_fee(int gas_amount, int wc) inline {
+    throw_unless(107, (wc == -1) | (wc == 0));
+    cell gas_price_config = config_param(21 + wc); ;; 20 or 21
+    slice config_ds = gas_price_config.begin_parse().skip_bits(8);
+
+    (int flat_gas_limit, int flat_gas_price, _, int gas_price) = (config_ds~load_uint(64), config_ds~load_uint(64), config_ds~load_uint(8), config_ds~load_uint(64));
+
+    ;; gas_price >> 16 == gas_price / 65536
+    return gas_amount < flat_gas_limit ? flat_gas_price : (gas_amount - flat_gas_limit) * (gas_price >> 16) + flat_gas_price;
+}

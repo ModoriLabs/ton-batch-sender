@@ -1,0 +1,5 @@
+;; Jetton
+const int op::transfer_notification = 0x7362d09c;
+
+;; Transfer Notification's op codes
+const int op::send = "send"c;
