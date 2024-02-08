@@ -1,0 +1,9 @@
+{
+    "name": "BatchSender",
+    "contract": "BatchSender",
+    "deployer": "EQDGT_cv-dkWrmIGUs89fd4AaJpe7mbDNx0F-CB-DwwDtzc4",
+    "address": "EQBMCSiCU36IbZTfKddp-ZkEGBteJsa5C1Rwfh4hOSrHtGNf",
+    "network": "testnet",
+    "code": "te6cckECBQEAARIAART/APSkE/S88sgLAQGQ0zMixwCSXwPg0NMDAXGwkl8D4PpAMALTH9M/MQGCEHNi0Jy6jp76APpA1DDQIsIA8uBU0x/TPwKCEKdzOs26kl8G4w2SXwPiAgHGAfQEMHBTAYBA9IZvpZCOFAH6QDH6ADADpFAjoFETgED0fG+l6FsVvvLgVCPCAPLgVYIK+vCAUgWoU1C88uBTIYBA9IZvpZCK6BAkXwQyM3CAEMjLBVAEzxZZofoCy2rJcvsAAwFyAfpA+gAwcCZQI3AgghAPin6lyMsfFss/UAP6AiHPFgHPFhPLAAH6AssAyXInVEow2zwigED0fG+lBAAscYAYyMsFUATPFlAE+gISy2rMyQH7AMKrdp8=",
+    "data": "te6cckEBAQEAAgAAAEysuc0="
+}
