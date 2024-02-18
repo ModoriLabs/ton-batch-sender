@@ -79,4 +79,17 @@ export class BatchSender implements Contract {
             .storeDict(messagesDict)
             .endCell();
     }
+
+    async getCost(provider: ContractProvider, len: number, type: number) {
+        let res = await provider.get('get_cost', [
+            {
+                type: 'int', value: BigInt(len)
+            },
+            { 
+                type: 'int', value: BigInt(type)
+            }
+        ]);
+        return res.stack.readBigNumber();
+    }
+
 }

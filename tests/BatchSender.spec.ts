@@ -143,4 +143,15 @@ describe('Sender', () => {
     });
 
     it('test_send_random', async () => {});
+
+    it.only('test_calculate_cost', async () => {
+        const res = await batchSender.getCost(5, 0);
+        expect(res).toEqual(0n);
+        
+        const res2 = await batchSender.getCost(11, 0);
+        expect(res2).toEqual(toNano('0.01'));
+
+        const res3 = await batchSender.getCost(11, 1);
+        expect(res3).toEqual(toNano('0.01') * 11n);
+    })
 });
