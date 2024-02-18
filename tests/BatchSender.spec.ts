@@ -27,7 +27,11 @@ describe('Sender', () => {
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        batchSender = blockchain.openContract(BatchSender.createFromConfig({}, code));
+        batchSender = blockchain.openContract(BatchSender.createFromConfig({
+            oneTimeFee: toNano("0.01"),
+            perUserFee: toNano("0.01"),
+            maxFreeUserCount: 10,
+        }, code));
         alice = await blockchain.treasury('alice');
         bob = await blockchain.treasury('bob');
         carlie = await blockchain.treasury('carlie');

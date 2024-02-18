@@ -1,0 +1,18 @@
+global int storage::one_time_fee;
+global int storage::per_user_fee;
+global int storage::max_free_user_count;
+
+() load_storage() impure inline {
+  slice ds = get_data().begin_parse();
+  storage::one_time_fee = ds~load_coins();
+  storage::per_user_fee = ds~load_coins();
+  storage::max_free_user_count = ds~load_uint(256);
+}
+
+() save_storage() impure inline {
+  set_data(begin_cell()
+    .store_coins(storage::one_time_fee)
+    .store_coins(storage::per_user_fee)
+    .store_uint(storage::max_free_user_count, 256)
+  .end_cell());
+}

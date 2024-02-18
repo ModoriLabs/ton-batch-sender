@@ -12,10 +12,18 @@ import {
 } from '@ton/core';
 import { crc32 } from '../utils/crc32';
 
-export type BatchSenderConfig = {};
+export type BatchSenderConfig = {
+    oneTimeFee: bigint,
+    perUserFee: bigint,
+    maxFreeUserCount: number,
+};
 
 export function senderConfigToCell(config: BatchSenderConfig): Cell {
-    return beginCell().endCell();
+    return beginCell()
+        .storeCoins(config.oneTimeFee)
+        .storeCoins(config.perUserFee)
+        .storeUint(config.maxFreeUserCount, 256)
+        .endCell();
 }
 
 export const SenderOpCodes = {
