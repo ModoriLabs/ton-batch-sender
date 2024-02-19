@@ -78,7 +78,7 @@ int calculate_cost(int len, int fee_type) inline {
 
       ;; Refund Case
       if((msg_value < gas_required + cost) | (jetton_amount < total_amount) | (size == 0)){
-        var body = create_simple_transfer_body(query_id, 0, jetton_amount, from);
+        var body = create_simple_transfer_body(query_id, 0, jetton_amount, from, from);
         send_simple_message(0, sender_address, body.end_cell(), CARRY_REMAINING_GAS);
 
         return ();
@@ -88,7 +88,7 @@ int calculate_cost(int len, int fee_type) inline {
       while (flag) {
         (slice to, int amount) = (message~load_msg_addr(), message~load_coins());
 
-        var body = create_simple_transfer_body(query_id, 0, amount, to);
+        var body = create_simple_transfer_body(query_id, 0, amount, to, from);
         ;; Ignore sender_address condition. It's not necessary to check it.
         ;; Why? If sender_address is not batch_sender's jetton wallet address, nothing will happen.
         send_simple_message(gas_required_per_transfer, sender_address, body.end_cell(), IGNORE_ERRORS);

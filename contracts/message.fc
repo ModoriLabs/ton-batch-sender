@@ -15,13 +15,13 @@ const SELFDESTRUCT_ON_EMPTY = 32;
   send_raw_message(msg, mode);
 }
 
-(builder) create_simple_transfer_body(int query_id, int fwd_amount, int jetton_amount, slice to) inline {
+(builder) create_simple_transfer_body(int query_id, int fwd_amount, int jetton_amount, slice to, slice response_address) inline {
   return begin_cell()
     .store_uint(0xf8a7ea5, 32) ;; TODO: manage it in common/op
     .store_uint(query_id, 64)
     .store_coins(jetton_amount)
     .store_slice(to) ;; to_owner_address
-    .store_slice(to)
+    .store_slice(response_address)
     .store_uint(0, 1)
     .store_coins(fwd_amount) ;; forward_ton_amount
     .store_uint(0, 1);
