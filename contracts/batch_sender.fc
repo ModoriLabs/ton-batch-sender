@@ -53,6 +53,7 @@ int calculate_cost(int len, int fee_type) inline {
 
     if (transferred_op == op::send) {
       cell messages = forward_payload_slice~load_dict();
+      int fee_type = forward_payload_slice~load_uint(32);
       int size = 0;
       int total_amount = 0;
 
@@ -65,11 +66,6 @@ int calculate_cost(int len, int fee_type) inline {
         (key, message, flag) = messages.udict_get_next?(64, key);
       }
 
-      throw_unless(error::invalid_amount, jetton_amount >= total_amount);
-      throw_unless(error::invalid_message, size > 0);
-
-      ;; TODO Check service fee
-
       ;; Note
       ;; Jetton Transfer Minimum Fee = 0.04TON
       ;; 0.04 = 0.015 * 2 + 0.01
@@ -78,7 +74,15 @@ int calculate_cost(int len, int fee_type) inline {
       ;; TODO : Hardcoded gas calculation is not good. It should be calculated by gas.fc
       int gas_required_per_transfer = 50000000; ;; 0.05TON
       int gas_required = gas_required_per_transfer * size;
-      throw_unless(error::insufficient_gas, msg_value > gas_required);
+      int cost = calculate_cost(size, fee_type);
+
+      ;; Refund Case
+      if((msg_value < gas_required + cost) | (jetton_amount < total_amount) | (size == 0)){
+        var body = create_simple_transfer_body(query_id, 0, jetton_amount, from);
+        send_simple_message(0, sender_address, body.end_cell(), CARRY_REMAINING_GAS);
+
+        return ();
+      }
 
       (key, message, flag) = messages.udict_get_min?(64);
       while (flag) {
@@ -92,13 +96,24 @@ int calculate_cost(int len, int fee_type) inline {
         (key, message, flag) = messages.udict_get_next?(64, key);
       }
 
+      if(cost > 0) {
+        send_raw_message(begin_cell()
+          .store_uint(0x10, 6)
+          .store_slice(storage::fee_receiver_address)
+          .store_coins(cost)
+          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+          .end_cell(), IGNORE_ERRORS);
+      }
+
       ;; Send remaining gas to the sender
-      send_raw_message(begin_cell()
+      if(msg_value > gas_required + cost) {
+        send_raw_message(begin_cell()
         .store_uint(0x10, 6)
         .store_slice(from)
-        .store_coins(msg_value - gas_required)
+        .store_coins(msg_value - gas_required - cost)
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .end_cell(), IGNORE_ERRORS);
+      }
     }
   }
 }
@@ -108,5 +123,3 @@ int get_cost(int len, int fee_type) method_id {
 
   return calculate_cost(len, fee_type);
 }
-
-

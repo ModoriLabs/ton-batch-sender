@@ -13,9 +13,11 @@ import {
 import { crc32 } from '../utils/crc32';
 
 export type BatchSenderConfig = {
-    oneTimeFee: bigint,
-    perUserFee: bigint,
-    maxFreeUserCount: number,
+    oneTimeFee: bigint;
+    perUserFee: bigint;
+    maxFreeUserCount: number;
+    adminAddress: Address;
+    feeReceiverAddress: Address;
 };
 
 export function senderConfigToCell(config: BatchSenderConfig): Cell {
@@ -23,6 +25,8 @@ export function senderConfigToCell(config: BatchSenderConfig): Cell {
         .storeCoins(config.oneTimeFee)
         .storeCoins(config.perUserFee)
         .storeUint(config.maxFreeUserCount, 256)
+        .storeAddress(config.adminAddress)
+        .storeAddress(config.feeReceiverAddress)
         .endCell();
 }
 
@@ -77,19 +81,21 @@ export class BatchSender implements Contract {
             .storeUint(SenderOpCodes.send, 32) // OpCode
             .storeUint(0, 64) // QueryId
             .storeDict(messagesDict)
+            .storeUint(0, 32) // fee_type
             .endCell();
     }
 
     async getCost(provider: ContractProvider, len: number, type: number) {
         let res = await provider.get('get_cost', [
             {
-                type: 'int', value: BigInt(len)
+                type: 'int',
+                value: BigInt(len),
             },
-            { 
-                type: 'int', value: BigInt(type)
-            }
+            {
+                type: 'int',
+                value: BigInt(type),
+            },
         ]);
         return res.stack.readBigNumber();
     }
-
 }

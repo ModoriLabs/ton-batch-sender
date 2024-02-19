@@ -5,6 +5,7 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { JettonWallet } from '../wrappers/JettonWallet';
 import jettonFixture, { JettonFixture } from './fixtures/jetton';
+import _ from 'lodash';
 
 describe('Sender', () => {
     let code: Cell;
@@ -16,7 +17,8 @@ describe('Sender', () => {
     let blockchain: Blockchain;
     let alice: SandboxContract<TreasuryContract>,
         bob: SandboxContract<TreasuryContract>,
-        carlie: SandboxContract<TreasuryContract>;
+        carlie: SandboxContract<TreasuryContract>,
+        feeReceiver: SandboxContract<TreasuryContract>;
     let batchSender: SandboxContract<BatchSender>;
     let jetton: SandboxContract<JettonFixture>;
     let senderJettonWallet: SandboxContract<JettonWallet>;
@@ -26,15 +28,23 @@ describe('Sender', () => {
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
-
-        batchSender = blockchain.openContract(BatchSender.createFromConfig({
-            oneTimeFee: toNano("0.01"),
-            perUserFee: toNano("0.01"),
-            maxFreeUserCount: 10,
-        }, code));
         alice = await blockchain.treasury('alice');
         bob = await blockchain.treasury('bob');
         carlie = await blockchain.treasury('carlie');
+        feeReceiver = await blockchain.treasury('feeReceiver');
+
+        batchSender = blockchain.openContract(
+            BatchSender.createFromConfig(
+                {
+                    oneTimeFee: toNano('10'),
+                    perUserFee: toNano('10'),
+                    maxFreeUserCount: 10,
+                    adminAddress: alice.address,
+                    feeReceiverAddress: feeReceiver.address,
+                },
+                code,
+            ),
+        );
 
         await batchSender.sendDeploy(alice.getSender(), toNano('0.05'));
 
@@ -60,6 +70,148 @@ describe('Sender', () => {
             forwardTonAmount: toNano('0.05'),
             totalTonAmount: toNano('1'),
         });
+    });
+
+    it('test_refund_case_when_msg_value_is_lower_than_required', async () => {
+        const aliceBalance = await aliceJettonWallet.getJettonBalance();
+        const aliceTonBalance = await alice.getBalance();
+        const bobBalance = await bobJettonWallet.getJettonBalance();
+        const carlieBalance = await carlieJettonWallet.getJettonBalance();
+
+        const tx = await aliceJettonWallet.sendTransfer(alice.getSender(), toNano(1), {
+            jettonAmount: toNano(1.1),
+            to: batchSender.address,
+            responseAddress: alice.address,
+            customPayload: Cell.EMPTY,
+            forwardTonAmount: toNano(0.05), // required = 0.05 * 2 + 0(service fee)
+            forwardPayload: BatchSender.buildSendPayload([
+                {
+                    to: bob.address,
+                    amount: toNano(1),
+                },
+                {
+                    to: carlie.address,
+                    amount: toNano(0.1),
+                },
+            ]),
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: alice.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: batchSender.address,
+            to: senderJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: senderJettonWallet.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(aliceBalance).toEqual(await aliceJettonWallet.getJettonBalance());
+        expect(bobBalance).toEqual(await bobJettonWallet.getJettonBalance());
+        expect(carlieBalance).toEqual(await carlieJettonWallet.getJettonBalance());
+
+        const afterAliceTonBalance = await alice.getBalance();
+        // Service fee is not consumed
+        expect(aliceTonBalance - afterAliceTonBalance).toBeLessThan(toNano(1));
+    });
+
+    it('test_refund_case_when_jetton_amount_is_wrong', async () => {
+        const aliceBalance = await aliceJettonWallet.getJettonBalance();
+        const aliceTonBalance = await alice.getBalance();
+        const bobBalance = await bobJettonWallet.getJettonBalance();
+        const carlieBalance = await carlieJettonWallet.getJettonBalance();
+
+        const tx = await aliceJettonWallet.sendTransfer(alice.getSender(), toNano(2), {
+            jettonAmount: toNano(1), // This value should be 1 + 0.1
+            to: batchSender.address,
+            responseAddress: alice.address,
+            customPayload: Cell.EMPTY,
+            forwardTonAmount: toNano(1),
+            forwardPayload: BatchSender.buildSendPayload([
+                {
+                    to: bob.address,
+                    amount: toNano(1),
+                },
+                {
+                    to: carlie.address,
+                    amount: toNano(0.1),
+                },
+            ]),
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: alice.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: batchSender.address,
+            to: senderJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: senderJettonWallet.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(aliceBalance).toEqual(await aliceJettonWallet.getJettonBalance());
+        expect(bobBalance).toEqual(await bobJettonWallet.getJettonBalance());
+        expect(carlieBalance).toEqual(await carlieJettonWallet.getJettonBalance());
+
+        const afterAliceTonBalance = await alice.getBalance();
+        expect(aliceTonBalance - afterAliceTonBalance).toBeLessThan(toNano('1'));
+    });
+
+    it('test_refund_case_when_message_size_is_0', async () => {
+        const aliceBalance = await aliceJettonWallet.getJettonBalance();
+        const aliceTonBalance = await alice.getBalance();
+        const bobBalance = await bobJettonWallet.getJettonBalance();
+        const carlieBalance = await carlieJettonWallet.getJettonBalance();
+
+        const tx = await aliceJettonWallet.sendTransfer(alice.getSender(), toNano(2), {
+            jettonAmount: toNano(1),
+            to: batchSender.address,
+            responseAddress: alice.address,
+            customPayload: Cell.EMPTY,
+            forwardTonAmount: toNano(1),
+            forwardPayload: BatchSender.buildSendPayload([]),
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: alice.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: batchSender.address,
+            to: senderJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: senderJettonWallet.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(aliceBalance).toEqual(await aliceJettonWallet.getJettonBalance());
+        expect(bobBalance).toEqual(await bobJettonWallet.getJettonBalance());
+        expect(carlieBalance).toEqual(await carlieJettonWallet.getJettonBalance());
+
+        const afterAliceTonBalance = await alice.getBalance();
+        expect(aliceTonBalance - afterAliceTonBalance).toBeLessThan(toNano('1'));
     });
 
     it('test_send_2', async () => {
@@ -142,16 +294,70 @@ describe('Sender', () => {
         expect(aliceTonBalance - afterAliceTonBalance).toBeLessThan(totalTonAmount);
     });
 
-    it('test_send_random', async () => {});
+    it('test_send_100', async () => {
+        const aliceBalance = await aliceJettonWallet.getJettonBalance();
+        const feeReceiverTonBalance = await feeReceiver.getBalance();
+        const messages = _.times(100, (i) => {
+            return {
+                to: i % 2 ? bob.address : carlie.address,
+                amount: toNano(_.random(0.1, 2)),
+            };
+        });
+        const expectedRequiredGas = toNano(0.05) * BigInt(messages.length);
+        const expectedServiceFee = toNano(10);
+        const totalJettonAmount = messages.reduce((acc, m) => acc + m.amount, 0n);
 
-    it.only('test_calculate_cost', async () => {
+        const tx = await aliceJettonWallet.sendTransfer(
+            alice.getSender(),
+            toNano(2) + expectedRequiredGas + expectedServiceFee,
+            {
+                jettonAmount: totalJettonAmount,
+                to: batchSender.address,
+                responseAddress: alice.address,
+                customPayload: Cell.EMPTY,
+                forwardTonAmount: expectedRequiredGas + expectedServiceFee + toNano(1),
+                forwardPayload: BatchSender.buildSendPayload(messages),
+            },
+        );
+
+        expect(tx.transactions).toHaveTransaction({
+            from: alice.address,
+            to: aliceJettonWallet.address,
+            success: true,
+        });
+
+        expect(tx.transactions).not.toHaveTransaction({
+            from: senderJettonWallet.address,
+            to: aliceJettonWallet.address,
+        });
+
+        expect(tx.transactions).toHaveTransaction({
+            from: senderJettonWallet.address,
+            to: bobJettonWallet.address,
+        });
+
+        const afterFeeReceiverTonBalance = await feeReceiver.getBalance();
+        expect(afterFeeReceiverTonBalance).toBeGreaterThan(feeReceiverTonBalance);
+        expect(afterFeeReceiverTonBalance).toBeLessThan(expectedServiceFee + feeReceiverTonBalance);
+
+        expect(await bobJettonWallet.getJettonBalance()).toEqual(
+            messages.reduce((acc, m) => (m.to === bob.address ? acc + m.amount : acc), 0n),
+        );
+        expect(await carlieJettonWallet.getJettonBalance()).toEqual(
+            messages.reduce((acc, m) => (m.to === carlie.address ? acc + m.amount : acc), 0n),
+        );
+        expect(aliceBalance - totalJettonAmount).toEqual(await aliceJettonWallet.getJettonBalance());
+    });
+
+    // TODO : Simulate Gas fee
+    it('test_calculate_cost', async () => {
         const res = await batchSender.getCost(5, 0);
         expect(res).toEqual(0n);
-        
+
         const res2 = await batchSender.getCost(11, 0);
-        expect(res2).toEqual(toNano('0.01'));
+        expect(res2).toEqual(toNano('10'));
 
         const res3 = await batchSender.getCost(11, 1);
-        expect(res3).toEqual(toNano('0.01') * 11n);
-    })
+        expect(res3).toEqual(toNano('10') * 11n);
+    });
 });

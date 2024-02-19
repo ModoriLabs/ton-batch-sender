@@ -9,7 +9,18 @@ export async function run(provider: NetworkProvider) {
         throw new Error('Admin address is not specified');
     }
 
-    const batchSender = provider.open(BatchSender.createFromConfig({}, await compile('BatchSender')));
+    const batchSender = provider.open(
+        BatchSender.createFromConfig(
+            {
+                oneTimeFee: toNano(10),
+                perUserFee: toNano(10),
+                maxFreeUserCount: 10,
+                adminAddress: sender,
+                feeReceiverAddress: sender,
+            },
+            await compile('BatchSender'),
+        ),
+    );
 
     await batchSender.sendDeploy(provider.sender(), toNano('0.5'));
 
