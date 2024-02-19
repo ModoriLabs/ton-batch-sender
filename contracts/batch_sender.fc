@@ -73,11 +73,12 @@ int calculate_cost(int len, int fee_type) inline {
       ;; * 0.01 is jetton wallet minimum storage fee
       ;; TODO : Hardcoded gas calculation is not good. It should be calculated by gas.fc
       int gas_required_per_transfer = 50000000; ;; 0.05TON
+      int minmum_fee = 13000000; ;; 0.013TON Estimated
       int gas_required = gas_required_per_transfer * size;
       int cost = calculate_cost(size, fee_type);
 
       ;; Refund Case
-      if((msg_value < gas_required + cost) | (jetton_amount < total_amount) | (size == 0)){
+      if((msg_value < gas_required + cost + minmum_fee) | (jetton_amount < total_amount) | (size == 0)){
         var body = create_simple_transfer_body(query_id, 0, jetton_amount, from, from);
         send_simple_message(0, sender_address, body.end_cell(), CARRY_REMAINING_GAS);
 
@@ -105,12 +106,11 @@ int calculate_cost(int len, int fee_type) inline {
           .end_cell(), IGNORE_ERRORS);
       }
 
-      ;; Send remaining gas to the sender
-      if(msg_value > gas_required + cost) {
+      if(msg_value > gas_required + cost + minmum_fee) {
         send_raw_message(begin_cell()
         .store_uint(0x10, 6)
         .store_slice(from)
-        .store_coins(msg_value - gas_required - cost)
+        .store_coins(msg_value - gas_required - cost - minmum_fee)
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .end_cell(), IGNORE_ERRORS);
       }

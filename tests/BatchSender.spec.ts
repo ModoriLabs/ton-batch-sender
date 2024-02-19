@@ -216,6 +216,7 @@ describe('Sender', () => {
 
     it('test_send_2', async () => {
         const aliceBalance = await aliceJettonWallet.getJettonBalance();
+        const contractBalance = await batchSender.getBalance();
         const bobAmount = toNano(1);
         const carlieAmount = toNano(0.1);
         const aliceTonBalance = await alice.getBalance();
@@ -292,10 +293,15 @@ describe('Sender', () => {
 
         const afterAliceTonBalance = await alice.getBalance();
         expect(aliceTonBalance - afterAliceTonBalance).toBeLessThan(totalTonAmount);
+
+        const afterContractBalance = await batchSender.getBalance();
+
+        expect(afterContractBalance).toBeGreaterThanOrEqual(contractBalance);
     });
 
-    it.only('test_send_bulk', async () => {
+    it('test_send_bulk', async () => {
         const aliceBalance = await aliceJettonWallet.getJettonBalance();
+        const contractBalance = await batchSender.getBalance();
         const feeReceiverTonBalance = await feeReceiver.getBalance();
         const messages = _.times(200, (i) => {
             return {
@@ -323,7 +329,7 @@ describe('Sender', () => {
             },
         );
 
-        printTransactionFees(_.slice(tx.transactions, 0, 5));
+        // printTransactionFees(_.slice(tx.transactions, 0, 5));
 
         expect(tx.transactions).toHaveTransaction({
             from: alice.address,
@@ -352,6 +358,9 @@ describe('Sender', () => {
             messages.reduce((acc, m) => (m.to === carlie.address ? acc + m.amount : acc), 0n),
         );
         expect(aliceBalance - totalJettonAmount).toEqual(await aliceJettonWallet.getJettonBalance());
+
+        const afterContractBalance = await batchSender.getBalance();
+        expect(afterContractBalance).toBeGreaterThanOrEqual(contractBalance);
     });
 
     // TODO : Simulate Gas fee

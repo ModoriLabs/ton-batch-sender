@@ -62,6 +62,11 @@ export class BatchSender implements Contract {
         return new BatchSender(contractAddress(workchain, init), init);
     }
 
+    async getBalance(provider: ContractProvider) {
+        const res = await provider.getState();
+        return res.balance;
+    }
+
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
         await provider.internal(via, {
             value,
