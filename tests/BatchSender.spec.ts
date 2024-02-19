@@ -1,4 +1,4 @@
-import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+import { Blockchain, SandboxContract, TreasuryContract, printTransactionFees } from '@ton/sandbox';
 import { Cell, beginCell, toNano } from '@ton/core';
 import { BatchSender } from '../wrappers/BatchSender';
 import '@ton/test-utils';
@@ -294,10 +294,10 @@ describe('Sender', () => {
         expect(aliceTonBalance - afterAliceTonBalance).toBeLessThan(totalTonAmount);
     });
 
-    it('test_send_100', async () => {
+    it.only('test_send_bulk', async () => {
         const aliceBalance = await aliceJettonWallet.getJettonBalance();
         const feeReceiverTonBalance = await feeReceiver.getBalance();
-        const messages = _.times(100, (i) => {
+        const messages = _.times(200, (i) => {
             return {
                 to: i % 2 ? bob.address : carlie.address,
                 amount: toNano(_.random(0.1, 2)),
@@ -307,6 +307,9 @@ describe('Sender', () => {
         const expectedServiceFee = toNano(10);
         const totalJettonAmount = messages.reduce((acc, m) => acc + m.amount, 0n);
 
+        // Computation Fee
+        // 100 -> 0.36TON
+        // 200 -> 0.72TON
         const tx = await aliceJettonWallet.sendTransfer(
             alice.getSender(),
             toNano(2) + expectedRequiredGas + expectedServiceFee,
@@ -319,6 +322,8 @@ describe('Sender', () => {
                 forwardPayload: BatchSender.buildSendPayload(messages),
             },
         );
+
+        printTransactionFees(_.slice(tx.transactions, 0, 5));
 
         expect(tx.transactions).toHaveTransaction({
             from: alice.address,
