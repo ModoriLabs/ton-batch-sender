@@ -12,8 +12,8 @@ export async function run(provider: NetworkProvider) {
     const batchSender = provider.open(
         BatchSender.createFromConfig(
             {
-                oneTimeFee: toNano(1),
-                perUserFee: toNano(1),
+                oneTimeFee: toNano(5),
+                perUserFee: toNano(5),
                 maxFreeUserCount: 10,
                 adminAddress: sender,
                 feeReceiverAddress: sender,
