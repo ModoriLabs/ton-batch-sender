@@ -42,6 +42,33 @@ int calculate_cost(int len, int fee_type) inline {
 
   load_storage();
 
+  ;; admin function
+  if(equal_slices(sender_address, storage::admin_address)){
+    if(op == op::set_one_time_fee) {
+      int fee = in_msg_body~load_coins();
+      storage::one_time_fee = fee;
+      save_storage();
+
+      return ();
+    }
+
+    if(op == op::set_per_user_fee) {
+      int fee = in_msg_body~load_coins();
+      storage::per_user_fee = fee;
+      save_storage();
+
+      return ();
+    }
+
+    if(op == op::set_fee_receiver_address) {
+      slice addr = in_msg_body~load_msg_addr();
+      storage::fee_receiver_address = addr;
+      save_storage();
+
+      return ();
+    }
+  }
+
   if (op == op::transfer_notification) {
     (int jetton_amount, slice from) = (in_msg_body~load_coins(), in_msg_body~load_msg_addr());
     cell forward_payload = in_msg_body~load_ref();
@@ -116,10 +143,24 @@ int calculate_cost(int len, int fee_type) inline {
       }
     }
   }
+
+  return ();
 }
 
 int get_cost(int len, int fee_type) method_id {
   load_storage();
 
   return calculate_cost(len, fee_type);
+}
+
+(int, int, int, slice, slice) get_storage() method_id {
+  load_storage();
+
+  return (
+    storage::one_time_fee,
+    storage::per_user_fee,
+    storage::max_free_user_count,
+    storage::admin_address,
+    storage::fee_receiver_address
+  );
 }

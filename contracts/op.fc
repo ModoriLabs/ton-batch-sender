@@ -3,3 +3,7 @@ const int op::transfer_notification = 0x7362d09c;
 
 ;; Transfer Notification's op codes
 const int op::send = "send"c;
+
+const int op::set_one_time_fee = "set_one_time_fee"c;
+const int op::set_per_user_fee = "set_per_user_fee"c;
+const int op::set_fee_receiver_address = "set_fee_receiver_address"c;

@@ -374,4 +374,37 @@ describe('Sender', () => {
         const res3 = await batchSender.getCost(11, 1);
         expect(res3).toEqual(toNano('10') * 11n);
     });
+
+    it('test_set_one_time_fee', async () => {
+        const expectedOneTimeFee = toNano('999');
+        await batchSender.sendSetOneTimeFee(alice.getSender(), toNano('1'), expectedOneTimeFee);
+
+        const storage = await batchSender.getStorage();
+        expect(storage.oneTimeFee).toEqual(expectedOneTimeFee);
+    });
+
+    it('test_set_per_user_fee', async () => {
+        const expectedFee = toNano('777');
+        await batchSender.sendSetPerUserFee(alice.getSender(), toNano('1'), expectedFee);
+
+        const storage = await batchSender.getStorage();
+        expect(storage.perUserFee).toEqual(expectedFee);
+    });
+
+    it('test_set_fee_receiver', async () => {
+        await batchSender.sendSetFeeReceiverAddress(alice.getSender(), toNano('1'), carlie.address);
+
+        const storage = await batchSender.getStorage();
+        expect(storage.feeReceiverAddress.equals(carlie.address)).toBeTruthy();
+        expect(storage.feeReceiverAddress.equals(feeReceiver.address)).toBeFalsy();
+    });
+
+    it('test_admin_func_unautorized', async () => {
+        const expectedOneTimeFee = toNano('999');
+        await batchSender.sendSetOneTimeFee(bob.getSender(), toNano('10'), expectedOneTimeFee);
+
+        const storage = await batchSender.getStorage();
+
+        expect(storage.oneTimeFee).not.toEqual(expectedOneTimeFee);
+    });
 });
